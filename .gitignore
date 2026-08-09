@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+.eggs/
+
+# Virtualenv
+venv/
+.venv/
+env/
+ENV/
+
+# Testing & linting
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Dados amostra de e-mail (NUNCA commitar .msg reais)
+E-mails/
+*.msg
+*.eml
+
+# Logs / temporarios
+*.log
+*.tmp
+*.temp
+*.bak
+*.orig
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Playwright / Puppeteer caches
+.cache/
+browser_data/
+user_data/

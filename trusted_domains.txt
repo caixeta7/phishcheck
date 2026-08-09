@@ -1,0 +1,4 @@
+# Domínios confiáveis — um por linha. Linhas com # são ignoradas.
+# Subdomínios são automaticamente incluídos (ex: mail.empresa.com.br também passa).
+# Edite este arquivo ou use o menu opção 8 para gerenciar.
+machadoassociados.com.br
