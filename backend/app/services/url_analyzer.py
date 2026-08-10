@@ -231,23 +231,39 @@ def _analyze_page_html(html: str, final_url: str, original_url: str, report: Ana
         report.add("Página", f"Página ({final_domain}) quase vazia — possível redirect JS.", 10, "medium")
 
 
+MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+
+
 def analyze_url_content(url: str, report: AnalysisReport):
-    """Pipeline de análise de conteúdo: segue redirects e analisa HTML final."""
+    """Pipeline de análise de conteúdo: valida URL, segue redirects e analisa HTML final."""
     try:
         import requests as _requests
     except ImportError:
         return
 
     from app.core.config import get_settings
+    from app.core.url_guard import validate_url, UnsafeUrlError, SafeRedirectSession
 
     original_url = url
     try:
-        session = _requests.Session()
+        validate_url(url)
+    except UnsafeUrlError as e:
+        report.add("Conteúdo URL", f"URL bloqueada por segurança: {e}", 0, "info")
+        return
+
+    try:
+        session = SafeRedirectSession()
+        session.trust_env = False
         session.headers.update(REQUESTS_HEADERS)
-        session.max_redirects = 10
-        resp = session.get(url, timeout=get_settings().url_fetch_timeout, allow_redirects=True, verify=True, stream=False)
+        session.max_redirects = 5
+        resp = session.get(url, timeout=get_settings().url_fetch_timeout, allow_redirects=True, verify=True, stream=True)
+
+        content = resp.raw.read(MAX_RESPONSE_BYTES, decode_content=True)
+        html = content.decode(resp.encoding or "utf-8", errors="ignore")
+        if len(content) >= MAX_RESPONSE_BYTES:
+            report.add("Conteúdo URL", "Página truncada (limite de 2 MB).", 0, "info")
+
         chain = [r.url for r in resp.history] + [resp.url]
-        html = resp.text
         final_url = chain[-1]
 
         final_domain = extract_domain(final_url)

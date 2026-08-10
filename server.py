@@ -97,6 +97,13 @@ def main() -> None:
     print("=" * 60)
     print(f"  Servidor:   {url}")
     print(f"  Modo:       {'desenvolvimento (reload)' if args.reload else 'produção'}")
+    if args.host not in ("127.0.0.1", "localhost"):
+        print("=" * 60)
+        print("  [AVISO] Servidor exposto além de localhost.")
+        print("  Sem autenticação, qualquer host da rede pode:")
+        print("    - Submeter URLs para análise (superfície SSRF)")
+        print("    - Gerenciar a allowlist de domínios confiáveis")
+        print("  Use --host 127.0.0.1 (padrão) para uso local seguro.")
     print("=" * 60)
     print()
 

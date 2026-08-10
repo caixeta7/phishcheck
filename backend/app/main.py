@@ -53,7 +53,7 @@ if _dist.is_dir():
 
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
-        f = _dist / full_path
-        if f.is_file():
+        f = (_dist / full_path).resolve()
+        if f.is_file() and _dist.resolve() in f.parents:
             return FileResponse(f)
         return FileResponse(_spa_path)
