@@ -10,6 +10,7 @@ export function RiskGauge({ score, verdict }: Props) {
   const cfg = VERDICT_CONFIG[verdict];
   const radius = 80;
   const cx = 100;
+  const cy = 90;
   const startX = cx - radius;
   const endX = cx + radius;
   const circumference = Math.PI * radius;
@@ -18,27 +19,29 @@ export function RiskGauge({ score, verdict }: Props) {
   return (
     <div className="flex flex-col items-center gap-3">
       <div className="relative h-40 w-72">
-        <svg viewBox="0 0 200 110" className="h-full w-full">
+        <svg viewBox="0 0 200 100" className="h-full w-full">
           <path
-            d={`M ${startX} 100 A ${radius} ${radius} 0 0 1 ${endX} 100`}
+            d={`M ${startX} ${cy} A ${radius} ${radius} 0 0 1 ${endX} ${cy}`}
             fill="none"
             stroke="var(--border-default)"
             strokeWidth="12"
             strokeLinecap="round"
           />
-          <motion.path
-            d={`M ${startX} 100 A ${radius} ${radius} 0 0 1 ${endX} 100`}
-            fill="none"
-            stroke={cfg.ring}
-            strokeWidth="12"
-            strokeLinecap="round"
-            strokeDasharray={`${arc} ${circumference}`}
-            initial={{ strokeDasharray: `0 ${circumference}` }}
-            animate={{ strokeDasharray: `${arc} ${circumference}` }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-          />
+          {score > 0 && (
+            <motion.path
+              d={`M ${startX} ${cy} A ${radius} ${radius} 0 0 1 ${endX} ${cy}`}
+              fill="none"
+              stroke={cfg.ring}
+              strokeWidth="12"
+              strokeLinecap="round"
+              strokeDasharray={`${arc} ${circumference}`}
+              initial={{ strokeDasharray: `0 ${circumference}` }}
+              animate={{ strokeDasharray: `${arc} ${circumference}` }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            />
+          )}
         </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+        <div className="absolute inset-0 flex flex-col items-center justify-end gap-1 pb-3">
           <motion.span
             initial={{ opacity: 0, scale: 0.5 }}
             animate={{ opacity: 1, scale: 1 }}
