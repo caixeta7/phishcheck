@@ -9,6 +9,8 @@ import tempfile
 import base64
 from typing import AsyncGenerator
 
+from email.message import Message
+
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from fastapi.responses import StreamingResponse
 

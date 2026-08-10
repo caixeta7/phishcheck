@@ -104,7 +104,7 @@ function Row({
         <div className="min-w-0">
           <dt className="text-xs text-[var(--text-muted)]">{label}</dt>
           <dd
-            className={`truncate ${
+            className={`break-words ${
               highlight ? "text-orange-500 font-medium" : "text-[var(--text-primary)]"
             } ${mono ? "font-mono text-sm" : "text-sm"}`}
           >

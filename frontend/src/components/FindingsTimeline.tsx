@@ -69,10 +69,13 @@ function FindingItem({ finding }: { finding: Finding }) {
       className="cursor-pointer rounded-lg p-2.5 transition-colors hover:bg-[var(--bg-elevated)]"
     >
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <Badge severity={finding.severity} />
           <span className="text-xs text-[var(--text-muted)] shrink-0">{finding.category}</span>
-          <span className="text-sm text-[var(--text-primary)] truncate">
+          <span className={clsx(
+            "text-sm text-[var(--text-primary)]",
+            expanded ? "break-words" : "truncate",
+          )}>
             {finding.description}
           </span>
         </div>
@@ -90,6 +93,29 @@ function FindingItem({ finding }: { finding: Finding }) {
           />
         </div>
       </div>
+      {expanded && (
+        <div className="mt-2.5 ml-8 space-y-2 border-l-2 border-[var(--border-default)] pl-3 text-xs">
+          <div className="flex flex-wrap gap-2">
+            <span className="text-[var(--text-muted)]">
+              Severidade:{" "}
+              <span className={SEVERITY_CONFIG[finding.severity].color}>
+                {SEVERITY_CONFIG[finding.severity].label}
+              </span>
+            </span>
+            <span className="text-[var(--text-muted)]">|</span>
+            <span className="text-[var(--text-muted)]">
+              Peso: <span className="font-mono text-[var(--text-primary)]">+{finding.weight} pts</span>
+            </span>
+            <span className="text-[var(--text-muted)]">|</span>
+            <span className="text-[var(--text-muted)]">
+              Categoria: <span className="text-[var(--text-primary)]">{finding.category}</span>
+            </span>
+          </div>
+          <div className="break-words text-[var(--text-secondary)] leading-relaxed">
+            {finding.description}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

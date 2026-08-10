@@ -100,24 +100,79 @@ export function App() {
                     <div className="flex-1 space-y-3">
                       <div>
                         <span className="text-xs text-[var(--text-muted)]">Sujeito</span>
-                        <p className="text-sm font-medium">{report.subject}</p>
+                        <p className="text-sm font-medium break-words">{report.subject}</p>
                       </div>
-                      {report.domains_checked.length > 0 && (
+                      {report.subject_line && (
                         <div>
-                          <span className="text-xs text-[var(--text-muted)]">Domínios verificados</span>
-                          <p className="text-sm font-mono">{report.domains_checked.join(", ")}</p>
+                          <span className="text-xs text-[var(--text-muted)]">Assunto</span>
+                          <p className="text-sm break-words">{report.subject_line}</p>
                         </div>
                       )}
-                      {report.urls_found.length > 0 && (
-                        <div>
-                          <span className="text-xs text-[var(--text-muted)]">URLs encontradas</span>
-                          <p className="text-sm font-mono truncate">{report.urls_found.length} URL(s)</p>
-                        </div>
-                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {report.findings.some(f => f.severity === "critical") && (
+                          <span className="rounded-full bg-red-500/10 px-2.5 py-0.5 text-xs font-medium text-red-500">
+                            {report.findings.filter(f => f.severity === "critical").length} Crítico(s)
+                          </span>
+                        )}
+                        {report.findings.some(f => f.severity === "high") && (
+                          <span className="rounded-full bg-orange-500/10 px-2.5 py-0.5 text-xs font-medium text-orange-500">
+                            {report.findings.filter(f => f.severity === "high").length} Alto(s)
+                          </span>
+                        )}
+                        {report.findings.some(f => f.severity === "medium") && (
+                          <span className="rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs font-medium text-yellow-500">
+                            {report.findings.filter(f => f.severity === "medium").length} Médio(s)
+                          </span>
+                        )}
+                        {report.findings.some(f => f.severity === "low") && (
+                          <span className="rounded-full bg-blue-500/10 px-2.5 py-0.5 text-xs font-medium text-blue-500">
+                            {report.findings.filter(f => f.severity === "low").length} Baixo(s)
+                          </span>
+                        )}
+                        {report.findings.some(f => f.severity === "info") && (
+                          <span className="rounded-full bg-gray-500/10 px-2.5 py-0.5 text-xs font-medium text-gray-400">
+                            {report.findings.filter(f => f.severity === "info").length} Info(s)
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </Card>
 
                   <SenderCard report={report} />
+
+                  {report.urls_found.length > 0 && (
+                    <Card className="p-5">
+                      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                        URLs Encontradas ({report.urls_found.length})
+                      </h3>
+                      <div className="max-h-48 space-y-1.5 overflow-y-auto">
+                        {report.urls_found.map((url, i) => (
+                          <div key={i} className="flex items-start gap-2 text-xs">
+                            <span className="mt-0.5 shrink-0 text-[var(--text-muted)]">{i + 1}.</span>
+                            <span className="break-all font-mono text-[var(--text-primary)]">{url}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </Card>
+                  )}
+
+                  {report.domains_checked.length > 0 && (
+                    <Card className="p-5">
+                      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+                        Domínios Verificados ({report.domains_checked.length})
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {report.domains_checked.map((d, i) => (
+                          <span
+                            key={i}
+                            className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] px-2.5 py-1 text-xs font-mono text-[var(--text-primary)]"
+                          >
+                            {d}
+                          </span>
+                        ))}
+                      </div>
+                    </Card>
+                  )}
 
                   <FindingsTimeline findings={report.findings} />
                 </motion.div>

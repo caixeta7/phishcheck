@@ -99,6 +99,13 @@ def analyze_url_heuristics(url: str, report: AnalysisReport):
     if "@" in parsed.netloc:
         report.add("URL", "URL contém '@' no host — técnica de disfarce.", 30, "critical")
 
+    if "@" in (parsed.path + "?" + parsed.query + "#" + parsed.fragment):
+        report.add(
+            "URL",
+            "URL contém '@' no caminho/fragmento — tentativa de disfarçar destino real com domínio legítimo após o '@'.",
+            25, "high",
+        )
+
     if parsed.scheme == "http":
         report.add("URL", "Link usa HTTP (sem criptografia).", 10, "low")
 
@@ -231,12 +238,14 @@ def analyze_url_content(url: str, report: AnalysisReport):
     except ImportError:
         return
 
+    from app.core.config import get_settings
+
     original_url = url
     try:
         session = _requests.Session()
         session.headers.update(REQUESTS_HEADERS)
         session.max_redirects = 10
-        resp = session.get(url, timeout=10, allow_redirects=True, verify=True, stream=False)
+        resp = session.get(url, timeout=get_settings().url_fetch_timeout, allow_redirects=True, verify=True, stream=False)
         chain = [r.url for r in resp.history] + [resp.url]
         html = resp.text
         final_url = chain[-1]

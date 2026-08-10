@@ -8,31 +8,33 @@ interface Props {
 
 export function RiskGauge({ score, verdict }: Props) {
   const cfg = VERDICT_CONFIG[verdict];
-  const radius = 72;
+  const radius = 80;
+  const cx = 100;
+  const startX = cx - radius;
+  const endX = cx + radius;
   const circumference = Math.PI * radius;
-  const maxArc = circumference;
-  const arc = (score / 100) * maxArc;
+  const arc = (score / 100) * circumference;
 
   return (
     <div className="flex flex-col items-center gap-3">
       <div className="relative h-40 w-72">
         <svg viewBox="0 0 200 110" className="h-full w-full">
           <path
-            d={`M 14 100 A ${radius} ${radius} 0 0 1 186 100`}
+            d={`M ${startX} 100 A ${radius} ${radius} 0 0 1 ${endX} 100`}
             fill="none"
             stroke="var(--border-default)"
             strokeWidth="12"
             strokeLinecap="round"
           />
           <motion.path
-            d={`M 14 100 A ${radius} ${radius} 0 0 1 186 100`}
+            d={`M ${startX} 100 A ${radius} ${radius} 0 0 1 ${endX} 100`}
             fill="none"
             stroke={cfg.ring}
             strokeWidth="12"
             strokeLinecap="round"
-            strokeDasharray={`${arc} ${maxArc}`}
-            initial={{ strokeDasharray: `0 ${maxArc}` }}
-            animate={{ strokeDasharray: `${arc} ${maxArc}` }}
+            strokeDasharray={`${arc} ${circumference}`}
+            initial={{ strokeDasharray: `0 ${circumference}` }}
+            animate={{ strokeDasharray: `${arc} ${circumference}` }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           />
         </svg>
