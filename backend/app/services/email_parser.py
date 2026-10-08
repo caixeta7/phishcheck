@@ -6,20 +6,15 @@ Extraído e adaptado de phishcheck.py.
 from __future__ import annotations
 
 import email
-import os
 import re
 from email import policy
 from email.message import Message
-from typing import Optional
+
+import extract_msg
 
 
 def parse_eml_bytes(data: bytes) -> Message:
     return email.message_from_bytes(data, policy=policy.default)
-
-
-def parse_eml_file(path: str) -> Message:
-    with open(path, "rb") as f:
-        return email.message_from_binary_file(f, policy=policy.default)
 
 
 def parse_email_text(raw_text: str) -> Message:
@@ -38,13 +33,6 @@ def parse_email_text(raw_text: str) -> Message:
 
 def parse_msg_file(path: str) -> Message:
     """Converte .msg (Outlook) para email.message.Message via extract_msg."""
-    try:
-        import extract_msg
-    except ImportError:
-        raise RuntimeError(
-            "Para analisar arquivos .msg é necessário instalar 'extract_msg': pip install extract_msg"
-        )
-
     m = extract_msg.Message(path)
     header_msg = m.header
 

@@ -1,44 +1,41 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: ui-monospace, "JetBrains Mono", Consolas, monospace;
+  --font-sans: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Bricolage Grotesque", "Instrument Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --bg-primary: #f8f9fb;
+  --bg-primary: #eef1f4;
   --bg-card: #ffffff;
-  --bg-elevated: #f1f3f6;
-  --border-default: #e2e6ec;
-  --text-primary: #11151c;
-  --text-secondary: #6b7280;
-  --text-muted: #9ca3af;
-  --accent-blue: #3b82f6;
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --bg-elevated: #f3f5f8;
+  --border-default: #d5dbe2;
+  --text-primary: #14202e;
+  --text-secondary: #4f5b6a;
+  --text-muted: #7a8696;
+  --accent: #2b44e0;
+  --accent-soft: rgba(43, 68, 224, 0.08);
+  --shadow-card: 0 1px 0 rgba(20, 32, 46, 0.04), 0 1px 2px rgba(20, 32, 46, 0.06);
+  --shadow-elevated: 0 12px 32px -12px rgba(20, 32, 46, 0.25);
   color-scheme: light;
 }
 
 .dark {
-  --bg-primary: #0a0a0b;
-  --bg-card: #1a1a1d;
-  --bg-elevated: #232327;
-  --border-default: #2a2a30;
-  --text-primary: #f3f4f6;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
-  --accent-blue: #60a5fa;
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --bg-primary: #0e141b;
+  --bg-card: #151d27;
+  --bg-elevated: #1c2633;
+  --border-default: #283445;
+  --text-primary: #e6ecf2;
+  --text-secondary: #a3b0c0;
+  --text-muted: #6f7e92;
+  --accent: #8592ff;
+  --accent-soft: rgba(133, 146, 255, 0.1);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-elevated: 0 12px 32px -12px rgba(0, 0, 0, 0.6);
   color-scheme: dark;
-}
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
 }
 
 body {
@@ -51,7 +48,7 @@ body {
 }
 
 ::selection {
-  background: rgba(59, 130, 246, 0.2);
+  background: var(--accent-soft);
 }
 
 ::-webkit-scrollbar {
@@ -67,4 +64,11 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -53,7 +53,7 @@ export function TrustedModal({ open, onClose }: Props) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
         >
           <motion.div
             initial={{ scale: 0.95, opacity: 0 }}
@@ -63,8 +63,8 @@ export function TrustedModal({ open, onClose }: Props) {
             className="w-full max-w-md rounded-2xl border border-[var(--border-default)] bg-[var(--bg-card)] p-6 shadow-2xl"
           >
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Domínios Confiáveis</h2>
-              <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+              <h2 className="font-display text-xl font-bold">Domínios confiáveis</h2>
+              <button onClick={onClose} aria-label="Fechar" className="text-[var(--text-muted)] hover:text-[var(--text-primary)]">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -75,7 +75,7 @@ export function TrustedModal({ open, onClose }: Props) {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAdd()}
                 placeholder="dominio.com.br"
-                className="flex-1 rounded-lg border border-[var(--border-default)] bg-[var(--bg-primary)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                className="min-w-0 flex-1 rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30"
               />
               <Button size="sm" onClick={handleAdd} disabled={loading || !input.trim()}>
                 <Plus className="h-4 w-4" />
@@ -94,11 +94,12 @@ export function TrustedModal({ open, onClose }: Props) {
                     key={d}
                     className="flex items-center justify-between rounded-lg px-3 py-2 text-sm hover:bg-[var(--bg-elevated)]"
                   >
-                    <span className="font-mono">{d}</span>
+                    <span className="min-w-0 font-mono wrap-anywhere">{d}</span>
                     <button
                       onClick={() => handleRemove(d)}
                       disabled={loading}
-                      className="text-[var(--text-muted)] hover:text-red-500"
+                      aria-label={`Remover ${d}`}
+                      className="shrink-0 text-[var(--text-muted)] hover:text-red-500"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>

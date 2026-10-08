@@ -7,11 +7,15 @@ Extraído e adaptado de phishcheck.py.
 
 from __future__ import annotations
 
+import ipaddress
 import re
 import unicodedata
 from email.message import Message
 from email.utils import parseaddr
-from urllib.parse import urlparse, unquote
+from urllib.parse import urlparse
+
+import tldextract
+from bs4 import BeautifulSoup
 
 from app.core.constants import (
     BRAND_OFFICIAL_ROOTS,
@@ -25,9 +29,13 @@ from app.core.constants import (
     TIMESTAMP_SUBJ_RE,
     URGENCY_TERMS_EN,
     URGENCY_TERMS_PT,
+    URL_REGEX,
 )
 from app.services.report_builder import AnalysisReport
 from app.services.trusted_service import is_trusted
+
+# Instância única: carrega a PSL embutida uma vez (offline, sem fetch).
+_TLD = tldextract.TLDExtract(suffix_list_urls=())
 
 
 def strip_accents(text: str) -> str:
@@ -43,12 +51,6 @@ def normalize_text(text: str) -> str:
 
 def extract_domain(value: str) -> str:
     """Extrai o domínio registrável de uma URL, e-mail ou domínio puro."""
-    try:
-        import tldextract
-        _TLD = tldextract.TLDExtract(suffix_list_urls=())
-    except ImportError:
-        _TLD = None
-
     value = value.strip().strip("<>' \"")
     if "@" in value and "://" not in value:
         value = value.split("@")[-1].strip("<>' \"")
@@ -59,25 +61,9 @@ def extract_domain(value: str) -> str:
     value = value.split(":")[0]
     value = value.strip("/").strip("<>' \"")
 
-    if _TLD:
-        ext = _TLD(value)
-        if ext.domain and ext.suffix:
-            return f"{ext.domain}.{ext.suffix}".lower()
-        return value.lower()
-
-    _TWO_LEVEL_TLDS = {
-        "com", "org", "net", "edu", "gov", "mil", "adv", "adm",
-        "arq", "art", "bio", "biz", "cng", "cnt", "ecn", "eng",
-        "esp", "etc", "eti", "far", "fot", "fst", "g12", "ggf",
-        "imb", "ind", "inf", "jor", "lel", "mat", "med", "mus",
-        "not", "ntr", "odo", "ppg", "pro", "psc", "rec", "slg",
-        "srv", "tmp", "trd", "tur", "tv", "vet", "zlg", "co",
-    }
-    parts = value.split(".")
-    if len(parts) >= 3 and parts[-2] in _TWO_LEVEL_TLDS:
-        return ".".join(parts[-3:]).lower()
-    elif len(parts) >= 2:
-        return ".".join(parts[-2:]).lower()
+    ext = _TLD(value)
+    if ext.domain and ext.suffix:
+        return f"{ext.domain}.{ext.suffix}".lower()
     return value.lower()
 
 
@@ -96,7 +82,6 @@ def get_fqdn(value: str) -> str:
 
 
 def is_ip_address(host: str) -> bool:
-    import ipaddress
     try:
         ipaddress.ip_address(host)
         return True
@@ -105,7 +90,6 @@ def is_ip_address(host: str) -> bool:
 
 
 def extract_urls_from_text(text: str) -> list[str]:
-    from app.core.constants import URL_REGEX
     if not text:
         return []
     raw = URL_REGEX.findall(text)
@@ -258,11 +242,11 @@ def analyze_email_headers(msg: Message, report: AnalysisReport) -> tuple[str, st
     if len(rand_tokens) >= 2 and has_timestamp:
         report.add(
             "Assunto",
-            f"Assunto com padrão de geração automática: IDs aleatórios + timestamp.",
+            "Assunto com padrão de geração automática: IDs aleatórios + timestamp.",
             25, "high",
         )
     elif len(rand_tokens) >= 2:
-        report.add("Assunto", f"Assunto com múltiplos IDs gerados automaticamente.", 12, "medium")
+        report.add("Assunto", "Assunto com múltiplos IDs gerados automaticamente.", 12, "medium")
 
     return from_domain, from_addr, subject
 
@@ -312,18 +296,15 @@ def analyze_email_html_links(html_content: str, report: AnalysisReport) -> list[
     if not html_content:
         return []
 
-    anchor_pattern = re.compile(
-        r'<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>',
-        re.IGNORECASE | re.DOTALL,
-    )
     mismatches = []
     all_hrefs = []
 
+    # Import local: url_analyzer importa este módulo (ciclo).
     from app.services.url_analyzer import unwrap_security_rewrite
 
-    for match in anchor_pattern.finditer(html_content):
-        href, visible = match.group(1), match.group(2)
-        visible_clean = re.sub(r"<[^>]+>", "", visible).strip()
+    for a in BeautifulSoup(html_content, "html.parser").find_all("a", href=True):
+        href = a["href"].strip()
+        visible_clean = a.get_text(" ", strip=True)
 
         real_href, rewrite_provider = unwrap_security_rewrite(href)
         all_hrefs.append(real_href)
@@ -344,7 +325,7 @@ def analyze_email_html_links(html_content: str, report: AnalysisReport) -> list[
         report.add(
             "Conteúdo HTML",
             f"Link exibe '{visible_text}' mas aponta para '{real_url}'{via}.",
-            30, "critical",
+            30, "critical", rule="html.link_mismatch",
         )
 
     return [h for h in all_hrefs if not h.lower().startswith("mailto:")]
@@ -357,11 +338,11 @@ def analyze_attachments(filenames: list[str], report: AnalysisReport):
         if "." in filename:
             ext = "." + filename.rsplit(".", 1)[-1].lower()
         if ext in DANGEROUS_ATTACHMENT_EXT:
-            report.add("Anexo", f"Anexo de alto risco: '{filename}'.", 35, "critical")
+            report.add("Anexo", f"Anexo de alto risco: '{filename}'.", 35, "critical", rule="att.dangerous")
         elif ext in MEDIUM_RISK_ATTACHMENT_EXT:
-            report.add("Anexo", f"Anexo compactado/com macro: '{filename}'.", 12, "medium")
+            report.add("Anexo", f"Anexo compactado/com macro: '{filename}'.", 12, "medium", rule="att.archive_macro")
         if re.search(r"\.(pdf|docx?|xlsx?|jpg|png)\.(exe|scr|js|vbs|bat)$", filename.lower()):
-            report.add("Anexo", f"Anexo '{filename}' usa extensão dupla para disfarçar executável.", 35, "critical")
+            report.add("Anexo", f"Anexo '{filename}' usa extensão dupla para disfarçar executável.", 35, "critical", rule="att.double_ext")
 
 
 def check_brand_sender_mismatch(body_text: str, body_html: str, from_domain: str, report: AnalysisReport):

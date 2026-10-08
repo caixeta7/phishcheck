@@ -1,5 +1,5 @@
 import { Mail, Reply, CornerUpLeft, Shield, Calendar, Globe } from "lucide-react";
-import { Card } from "./ui/Card";
+import { Card, CardTitle } from "./ui/Card";
 import type { AnalysisReport } from "../types";
 
 interface Props {
@@ -35,13 +35,8 @@ export function SenderCard({ report: r }: Props) {
   const whoisAge = authFindings.find((f) => f.category === "WHOIS");
 
   return (
-    <Card className="p-5">
-      <div className="mb-4 flex items-center gap-2">
-        <Mail className="h-5 w-5 text-blue-500" />
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-          Remetente
-        </h3>
-      </div>
+    <Card className="p-5 sm:p-6">
+      <CardTitle>Remetente</CardTitle>
 
       <dl className="grid grid-cols-12 gap-x-4 gap-y-3 text-sm">
         {fromName && (
@@ -54,8 +49,8 @@ export function SenderCard({ report: r }: Props) {
           <Row icon={Globe} label="Domínio" value={fromDomain} mono />
         )}
         {replyTo && (
-          <Row icon={Reply} label="Reply-To" value={replyTo} highlight>
-            <div className="text-xs text-orange-500 mt-0.5">Diferente do From</div>
+          <Row icon={Reply} label="Reply-To" value={replyTo} mono highlight>
+            <div className="text-xs text-orange-600 dark:text-orange-400 mt-0.5">Diferente do From</div>
           </Row>
         )}
         {returnPath && (
@@ -70,8 +65,8 @@ export function SenderCard({ report: r }: Props) {
         <AuthChip label="SPF" active={spfFound} />
         <AuthChip label="DMARC" active={dmarcFound} />
         {whoisAge && (
-          <div className="flex items-center gap-1.5 text-sm text-[var(--text-secondary)]">
-            <Calendar className="h-3.5 w-3.5" />
+          <div className="flex min-w-0 items-center gap-1.5 text-sm text-[var(--text-secondary)] wrap-anywhere">
+            <Calendar className="h-3.5 w-3.5 shrink-0" />
             {whoisAge.description}
           </div>
         )}
@@ -101,11 +96,11 @@ function Row({
     <div className={`${full ? "col-span-12" : "col-span-12 sm:col-span-6"}`}>
       <div className="flex items-start gap-2">
         <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--text-muted)]" />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <dt className="text-xs text-[var(--text-muted)]">{label}</dt>
           <dd
-            className={`break-words ${
-              highlight ? "text-orange-500 font-medium" : "text-[var(--text-primary)]"
+            className={`wrap-anywhere ${
+              highlight ? "text-orange-600 dark:text-orange-400 font-medium" : "text-[var(--text-primary)]"
             } ${mono ? "font-mono text-sm" : "text-sm"}`}
           >
             {value}
@@ -119,12 +114,15 @@ function Row({
 
 function AuthChip({ label, active }: { label: string; active: boolean }) {
   return (
-    <div className="flex items-center gap-1.5 text-sm">
-      <Shield
-        className={`h-3.5 w-3.5 ${active ? "text-emerald-500" : "text-red-500"}`}
-      />
-      <span className="font-medium">{label}</span>
-      <span className={active ? "text-emerald-500" : "text-red-500"}>{active ? "✓" : "✗"}</span>
+    <div
+      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+        active
+          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+          : "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400"
+      }`}
+    >
+      <Shield className="h-3.5 w-3.5" />
+      {label} {active ? "✓" : "✗"}
     </div>
   );
 }

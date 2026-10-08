@@ -16,7 +16,7 @@ const TOAST_CONFIG = {
 
 export function ToastContainer({ toasts, onDismiss }: Props) {
   return (
-    <div className="fixed bottom-4 right-4 z-[200] space-y-2">
+    <div className="fixed inset-x-4 bottom-4 z-[200] space-y-2 sm:left-auto">
       <AnimatePresence>
         {toasts.map((t) => {
           const cfg = TOAST_CONFIG[t.type];
@@ -29,12 +29,12 @@ export function ToastContainer({ toasts, onDismiss }: Props) {
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
               className={clsx(
                 "flex items-center gap-3 rounded-lg border bg-[var(--bg-card)] px-4 py-3 shadow-lg",
-                "min-w-[300px] max-w-md",
+                "sm:min-w-[300px] max-w-md",
                 cfg.border,
               )}
             >
               <Icon className={clsx("h-5 w-5 shrink-0", cfg.color)} />
-              <p className="flex-1 text-sm text-[var(--text-primary)]">{t.message}</p>
+              <p className="min-w-0 flex-1 text-sm text-[var(--text-primary)] wrap-anywhere">{t.message}</p>
               <button
                 onClick={() => onDismiss(t.id)}
                 className="text-[var(--text-muted)] hover:text-[var(--text-primary)]"

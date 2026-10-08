@@ -5,8 +5,8 @@ import { Button } from "./ui/Button";
 import type { AnalysisType } from "../types";
 
 const TABS = [
-  { key: "email_text", label: "Colar E-mail", icon: Mail },
-  { key: "email_file", label: "Arquivo .eml/.msg", icon: Upload },
+  { key: "email_text", label: "Colar e-mail", icon: Mail },
+  { key: "email_file", label: ".eml / .msg", icon: Upload },
   { key: "url", label: "URL", icon: LinkIcon },
   { key: "domain", label: "Domínio", icon: Globe },
 ] as const;
@@ -39,13 +39,16 @@ export function InputPanel({ onAnalyze, disabled }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-1 rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] p-1">
+      <div role="tablist" className="grid grid-cols-2 gap-1 rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] p-1 sm:grid-cols-4">
         {TABS.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === key}
             onClick={() => setActiveTab(key)}
             className={clsx(
-              "flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-all",
+              "flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-2 py-2 text-[13px] font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/50",
               activeTab === key
                 ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm"
                 : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]",
@@ -64,15 +67,15 @@ export function InputPanel({ onAnalyze, disabled }: Props) {
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
           className={clsx(
-            "flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-12 cursor-pointer transition-all",
-            dragging ? "border-blue-500 bg-blue-500/5" : "border-[var(--border-default)] hover:border-[var(--text-muted)]",
+            "flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-10 transition-all",
+            dragging ? "border-[var(--accent)] bg-[var(--accent-soft)]" : "border-[var(--border-default)] hover:border-[var(--text-muted)]",
           )}
         >
           {file ? (
             <>
-              <FileText className="h-10 w-10 text-blue-500" />
+              <FileText className="h-10 w-10 text-[var(--accent)]" />
               <div className="text-center">
-                <p className="font-medium">{file.name}</p>
+                <p className="font-medium wrap-anywhere">{file.name}</p>
                 <p className="text-sm text-[var(--text-muted)]">{(file.size / 1024).toFixed(1)} KB</p>
               </div>
             </>
@@ -99,23 +102,23 @@ export function InputPanel({ onAnalyze, disabled }: Props) {
                 : "Cole aqui o e-mail completo (cabeçalhos + corpo)..."
           }
           className={clsx(
-            "w-full rounded-xl border border-[var(--border-default)] bg-[var(--bg-card)] p-4 text-sm",
-            "focus:outline-none focus:ring-2 focus:ring-blue-500/50",
+            "w-full rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] p-3.5 font-mono text-[13px] leading-relaxed",
+            "focus:border-[var(--accent)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30",
             "placeholder:text-[var(--text-muted)] resize-none",
-            activeTab === "url" || activeTab === "domain" ? "h-16" : "h-64",
+            activeTab === "url" || activeTab === "domain" ? "h-20" : "h-72",
           )}
         />
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <label className="flex cursor-pointer items-center gap-2 text-sm text-[var(--text-secondary)]">
           <input
             type="checkbox"
             checked={online}
             onChange={(e) => setOnline(e.target.checked)}
-            className="h-4 w-4 rounded accent-blue-600"
+            className="h-4 w-4 rounded accent-[var(--accent)]"
           />
-          Verificações online (DNS, WHOIS, Threat Intel)
+          Consultas online (DNS, WHOIS, threat intel)
         </label>
         <Button onClick={handleSubmit} disabled={disabled}>
           <Send className="h-4 w-4" />

@@ -6,14 +6,12 @@ Todas as APIs são gratuitas com rate limits. Fallback gracioso se keys ausentes
 from __future__ import annotations
 
 import asyncio
-import json
-from typing import Any
+import base64
 
 import httpx
 
 from app.core.config import get_settings
 from app.services.report_builder import AnalysisReport
-from app.services.email_analyzer import extract_domain, is_ip_address
 
 
 async def check_virustotal(urls: list[str], report: AnalysisReport):
@@ -28,31 +26,27 @@ async def check_virustotal(urls: list[str], report: AnalysisReport):
 
 
 async def _vt_check_url(client: httpx.AsyncClient, url: str, api_key: str, report: AnalysisReport):
+    headers = {"x-apikey": api_key}
     try:
-        resp = await client.post(
-            "https://www.virustotal.com/api/v3/urls",
-            headers={"x-apikey": api_key},
-            data={"url": url},
-        )
+        # Relatório já existente — submeter e ler logo em seguida devolve análise
+        # ainda na fila (stats zerados), o que seria reportado como "limpo".
+        url_id = base64.urlsafe_b64encode(url.encode()).decode().rstrip("=")
+        resp = await client.get(f"https://www.virustotal.com/api/v3/urls/{url_id}", headers=headers)
+
+        if resp.status_code == 404:
+            await client.post("https://www.virustotal.com/api/v3/urls", headers=headers, data={"url": url})
+            report.add("VirusTotal", f"'{url}' desconhecida no VirusTotal — enviada para análise, sem veredito ainda.", 0, "info")
+            return
+        if resp.status_code == 429:
+            report.add("VirusTotal", "Limite de requisições do VirusTotal atingido — URL não verificada.", 0, "info")
+            return
         if resp.status_code != 200:
+            report.add("VirusTotal", f"Consulta retornou status {resp.status_code}.", 0, "info")
             return
 
-        data = resp.json()
-        analysis_id = data.get("data", {}).get("id")
-        if not analysis_id:
-            return
-
-        await asyncio.sleep(1)
-
-        resp2 = await client.get(
-            f"https://www.virustotal.com/api/v3/analyses/{analysis_id}",
-            headers={"x-apikey": api_key},
-        )
-        if resp2.status_code != 200:
-            return
-
-        result = resp2.json().get("data", {}).get("attributes", {})
-        stats = result.get("stats", {})
+        attrs = resp.json().get("data", {}).get("attributes", {})
+        stats = attrs.get("last_analysis_stats", {})
+        result = {"results": attrs.get("last_analysis_results", {})}
         malicious = stats.get("malicious", 0)
         suspicious = stats.get("suspicious", 0)
 
@@ -60,7 +54,7 @@ async def _vt_check_url(client: httpx.AsyncClient, url: str, api_key: str, repor
             report.add(
                 "VirusTotal",
                 f"VirusTotal: {malicious} motor(es) classificaram '{url}' como malicioso.",
-                40, "critical",
+                40, "critical", rule="vt.malicious",
             )
 
             engine_results = result.get("results", {})
@@ -69,13 +63,13 @@ async def _vt_check_url(client: httpx.AsyncClient, url: str, api_key: str, repor
                 report.add(
                     "Kaspersky (via VT)",
                     f"Motor Kaspersky detectou '{url}' como: {kaspersky.get('result', 'malicioso')}.",
-                    10, "critical",
+                    10, "critical", rule="vt.kaspersky",
                 )
         elif suspicious > 0:
             report.add(
                 "VirusTotal",
                 f"VirusTotal: {suspicious} motor(es) classificaram '{url}' como suspeito.",
-                20, "high",
+                20, "high", rule="vt.suspicious",
             )
         else:
             report.add("VirusTotal", f"'{url}' limpo no VirusTotal (0 detecções).", 0, "info")
@@ -111,7 +105,7 @@ async def check_google_safe_browsing(urls: list[str], report: AnalysisReport):
                         report.add(
                             "Safe Browsing",
                             f"Google Safe Browsing classificou '{m.get('threat', {}).get('url')}' como '{m.get('threatType')}'.",
-                            40, "critical",
+                            40, "critical", rule="gsb.match",
                         )
                 else:
                     report.add("Safe Browsing", "URLs não encontradas em listas de ameaças do Google.", 0, "info")
@@ -148,13 +142,13 @@ async def _abuseipdb_check_ip(client: httpx.AsyncClient, ip: str, api_key: str, 
             report.add(
                 "AbuseIPDB",
                 f"IP {ip} com score de abuso {abuse_score}/100 — alto risco.",
-                30, "critical",
+                30, "critical", rule="abuseipdb.high",
             )
         elif abuse_score >= 30:
             report.add(
                 "AbuseIPDB",
                 f"IP {ip} com score de abuso {abuse_score}/100 — suspeito.",
-                15, "medium",
+                15, "medium", rule="abuseipdb.medium",
             )
     except Exception:
         pass

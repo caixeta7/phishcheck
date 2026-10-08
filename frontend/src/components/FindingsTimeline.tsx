@@ -1,57 +1,46 @@
 import { useMemo, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import clsx from "clsx";
-import { Card } from "./ui/Card";
-import { Badge } from "./ui/Badge";
-import { SEVERITY_CONFIG, type Finding, type Severity } from "../types";
+import { Card, CardTitle } from "./ui/Card";
+import { SEVERITY_CONFIG, SEVERITY_ORDER, type Finding, type Severity } from "../types";
 
 interface Props {
   findings: Finding[];
 }
 
-const SEVERITY_ORDER: Severity[] = ["critical", "high", "medium", "low", "info"];
-
 export function FindingsTimeline({ findings }: Props) {
   const grouped = useMemo(() => {
     const map = new Map<Severity, Finding[]>();
     for (const s of SEVERITY_ORDER) map.set(s, []);
-    for (const f of findings) {
-      map.get(f.severity)?.push(f);
-    }
+    for (const f of findings) map.get(f.severity)?.push(f);
     return map;
   }, [findings]);
 
   return (
-    <Card className="p-5">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-          Achados ({findings.length})
-        </h3>
-      </div>
+    <Card className="p-5 sm:p-6">
+      <CardTitle count={findings.length}>Achados</CardTitle>
 
       {findings.length === 0 ? (
-        <div className="flex items-center justify-center py-8 text-sm text-[var(--text-muted)]">
-          Nenhum sinal detectado.
-        </div>
+        <p className="py-8 text-center text-sm text-[var(--text-muted)]">Nenhum sinal de risco encontrado.</p>
       ) : (
         <div className="space-y-6">
           {SEVERITY_ORDER.map((sev) => {
             const items = grouped.get(sev) || [];
             if (!items.length) return null;
+            const cfg = SEVERITY_CONFIG[sev];
             return (
-              <div key={sev} className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-base">{SEVERITY_CONFIG[sev].icon}</span>
-                  <span className="text-xs font-medium uppercase text-[var(--text-muted)]">
-                    {SEVERITY_CONFIG[sev].label} ({items.length})
-                  </span>
-                </div>
-                <div className="ml-6 space-y-1.5 border-l border-[var(--border-default)] pl-4">
+              <section key={sev}>
+                <h4 className={clsx("mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em]", cfg.color)}>
+                  <span className={clsx("h-2 w-2 rounded-full", cfg.dot)} />
+                  {cfg.label}
+                  <span className="font-mono font-normal text-[var(--text-muted)]">{items.length}</span>
+                </h4>
+                <ul className="divide-y divide-[var(--border-default)] overflow-hidden rounded-lg border border-[var(--border-default)]">
                   {items.map((f, i) => (
                     <FindingItem key={`${sev}-${i}`} finding={f} />
                   ))}
-                </div>
-              </div>
+                </ul>
+              </section>
             );
           })}
         </div>
@@ -62,58 +51,46 @@ export function FindingsTimeline({ findings }: Props) {
 
 function FindingItem({ finding }: { finding: Finding }) {
   const [expanded, setExpanded] = useState(false);
+  const cfg = SEVERITY_CONFIG[finding.severity];
 
   return (
-    <div
-      onClick={() => setExpanded(!expanded)}
-      className="cursor-pointer rounded-lg p-2.5 transition-colors hover:bg-[var(--bg-elevated)]"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-2 min-w-0 flex-1">
-          <Badge severity={finding.severity} />
-          <span className="text-xs text-[var(--text-muted)] shrink-0 mt-0.5">{finding.category}</span>
-          <span className="text-sm text-[var(--text-primary)] break-words leading-snug">
-            {finding.description}
+    <li className="relative">
+      <span className={clsx("absolute inset-y-0 left-0 w-[3px]", cfg.dot)} aria-hidden />
+      <button
+        type="button"
+        aria-expanded={expanded}
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-start gap-3 py-3 pl-4 pr-3 text-left transition-colors hover:bg-[var(--bg-elevated)] focus-visible:bg-[var(--bg-elevated)] focus-visible:outline-none"
+      >
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-[var(--text-muted)]">{finding.category}</p>
+          <p className="mt-0.5 text-sm leading-snug text-[var(--text-primary)] wrap-anywhere">{finding.description}</p>
+        </div>
+        {finding.weight > 0 && (
+          <span className="mt-0.5 shrink-0 rounded bg-[var(--bg-elevated)] px-1.5 py-0.5 font-mono text-xs text-[var(--text-secondary)]">
+            +{finding.weight}
           </span>
-        </div>
-        <div className="flex items-center gap-2 shrink-0 mt-0.5">
-          {finding.weight > 0 && (
-            <span className="text-xs font-mono text-[var(--text-muted)]">
-              +{finding.weight}
-            </span>
-          )}
-          <ChevronDown
-            className={clsx(
-              "h-3.5 w-3.5 text-[var(--text-muted)] transition-transform",
-              expanded && "rotate-180",
-            )}
-          />
-        </div>
-      </div>
+        )}
+        <ChevronDown
+          className={clsx("mt-1 h-4 w-4 shrink-0 text-[var(--text-muted)] transition-transform", expanded && "rotate-180")}
+        />
+      </button>
       {expanded && (
-        <div className="mt-2.5 ml-8 space-y-1 border-l-2 border-[var(--border-default)] pl-3 text-xs">
-          <div className="flex flex-wrap gap-2">
-            <span className="text-[var(--text-muted)]">
-              Severidade:{" "}
-              <span className={SEVERITY_CONFIG[finding.severity].color}>
-                {SEVERITY_CONFIG[finding.severity].label}
-              </span>
-            </span>
-            {finding.weight > 0 && (
-              <>
-                <span className="text-[var(--text-muted)]">|</span>
-                <span className="text-[var(--text-muted)]">
-                  Peso: <span className="font-mono text-[var(--text-primary)]">+{finding.weight} pts</span>
-                </span>
-              </>
-            )}
-            <span className="text-[var(--text-muted)]">|</span>
-            <span className="text-[var(--text-muted)]">
-              Categoria: <span className="text-[var(--text-primary)]">{finding.category}</span>
-            </span>
+        <dl className="flex flex-wrap gap-x-5 gap-y-1 border-t border-dashed border-[var(--border-default)] bg-[var(--bg-elevated)] py-2.5 pl-4 pr-3 text-xs">
+          <div className="flex gap-1.5">
+            <dt className="text-[var(--text-muted)]">Severidade</dt>
+            <dd className={cfg.color}>{cfg.label}</dd>
           </div>
-        </div>
+          <div className="flex gap-1.5">
+            <dt className="text-[var(--text-muted)]">Peso</dt>
+            <dd className="font-mono">+{finding.weight} pts</dd>
+          </div>
+          <div className="flex gap-1.5">
+            <dt className="text-[var(--text-muted)]">Categoria</dt>
+            <dd>{finding.category}</dd>
+          </div>
+        </dl>
       )}
-    </div>
+    </li>
   );
 }

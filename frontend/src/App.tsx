@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShieldX, AlertTriangle } from "lucide-react";
+import { ShieldX, ScanSearch } from "lucide-react";
 
 import { useDarkMode } from "./hooks/useDarkMode";
 import { useAnalysis } from "./hooks/useAnalysis";
@@ -14,8 +14,8 @@ import { FindingsTimeline } from "./components/FindingsTimeline";
 import { TrustedModal } from "./components/TrustedModal";
 import { ResultSkeleton } from "./components/ResultSkeleton";
 import { ToastContainer } from "./components/ui/Toast";
-import { Card } from "./components/ui/Card";
-import type { AnalysisType } from "./types";
+import { Card, CardTitle } from "./components/ui/Card";
+import { SEVERITY_CONFIG, SEVERITY_ORDER, type AnalysisType } from "./types";
 
 export function App() {
   const { isDark, toggle } = useDarkMode();
@@ -42,17 +42,19 @@ export function App() {
     <div className="min-h-screen bg-[var(--bg-primary)]">
       <Header isDark={isDark} onToggleTheme={toggle} onOpenTrusted={() => setTrustedOpen(true)} />
 
-      <div className="mx-auto max-w-7xl px-6 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold tracking-tight">Análise de E-mails e Links</h1>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            Valide remetentes, links e domínios contra phishing, spam e fraudes.
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:py-10">
+        <div className="mb-8 max-w-2xl">
+          <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
+            Esse e-mail é quem diz ser?
+          </h1>
+          <p className="mt-2 text-[15px] text-[var(--text-secondary)]">
+            Confira remetente, autenticação, links e domínios antes de clicar em qualquer coisa.
           </p>
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-          <div className="lg:col-span-5 lg:sticky lg:top-24 lg:self-start">
-            <Card className="p-5">
+          <div className="min-w-0 lg:col-span-5 lg:sticky lg:top-20 lg:self-start">
+            <Card className="p-4 sm:p-5">
               <InputPanel onAnalyze={handleAnalyze} disabled={status === "analyzing"} />
             </Card>
 
@@ -63,7 +65,7 @@ export function App() {
             )}
           </div>
 
-          <div className="lg:col-span-7 space-y-4">
+          <div className="min-w-0 space-y-4 lg:col-span-7">
             <AnimatePresence mode="wait">
               {status === "idle" && (
                 <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -79,10 +81,10 @@ export function App() {
 
               {status === "error" && (
                 <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                  <Card className="flex flex-col items-center gap-3 p-12 text-center">
-                    <ShieldX className="h-12 w-12 text-red-500" />
-                    <h2 className="text-lg font-semibold">Erro na análise</h2>
-                    <p className="max-w-sm text-sm text-[var(--text-muted)]">{error}</p>
+                  <Card className="flex flex-col items-center gap-3 p-10 text-center sm:p-12">
+                    <ShieldX className="h-10 w-10 text-red-500" />
+                    <h2 className="font-display text-xl font-semibold">A análise não foi concluída</h2>
+                    <p className="max-w-sm text-sm text-[var(--text-secondary)] wrap-anywhere">{error}</p>
                   </Card>
                 </motion.div>
               )}
@@ -95,77 +97,65 @@ export function App() {
                   exit={{ opacity: 0 }}
                   className="space-y-4"
                 >
-                  <Card className="flex items-center gap-8 p-6">
+                  <Card className="p-5 sm:p-6">
                     <RiskGauge score={report.score} verdict={report.verdict} />
-                    <div className="flex-1 space-y-3">
-                      <div>
-                        <span className="text-xs text-[var(--text-muted)]">Sujeito</span>
-                        <p className="text-sm font-medium break-words">{report.subject}</p>
+
+                    <dl className="mt-6 grid gap-4 border-t border-[var(--border-default)] pt-5 text-sm sm:grid-cols-2">
+                      <div className="min-w-0">
+                        <dt className="text-xs text-[var(--text-muted)]">Item analisado</dt>
+                        <dd className="mt-0.5 font-mono text-[13px] wrap-anywhere">{report.subject}</dd>
                       </div>
                       {report.subject_line && (
-                        <div>
-                          <span className="text-xs text-[var(--text-muted)]">Assunto</span>
-                          <p className="text-sm break-words">{report.subject_line}</p>
+                        <div className="min-w-0">
+                          <dt className="text-xs text-[var(--text-muted)]">Assunto</dt>
+                          <dd className="mt-0.5 wrap-anywhere">{report.subject_line}</dd>
                         </div>
                       )}
-                      <div className="flex flex-wrap gap-2">
-                        {report.findings.some(f => f.severity === "critical") && (
-                          <span className="rounded-full bg-red-500/10 px-2.5 py-0.5 text-xs font-medium text-red-500">
-                            {report.findings.filter(f => f.severity === "critical").length} Crítico(s)
-                          </span>
-                        )}
-                        {report.findings.some(f => f.severity === "high") && (
-                          <span className="rounded-full bg-orange-500/10 px-2.5 py-0.5 text-xs font-medium text-orange-500">
-                            {report.findings.filter(f => f.severity === "high").length} Alto(s)
-                          </span>
-                        )}
-                        {report.findings.some(f => f.severity === "medium") && (
-                          <span className="rounded-full bg-yellow-500/10 px-2.5 py-0.5 text-xs font-medium text-yellow-500">
-                            {report.findings.filter(f => f.severity === "medium").length} Médio(s)
-                          </span>
-                        )}
-                        {report.findings.some(f => f.severity === "low") && (
-                          <span className="rounded-full bg-blue-500/10 px-2.5 py-0.5 text-xs font-medium text-blue-500">
-                            {report.findings.filter(f => f.severity === "low").length} Baixo(s)
-                          </span>
-                        )}
-                        {report.findings.some(f => f.severity === "info") && (
-                          <span className="rounded-full bg-gray-500/10 px-2.5 py-0.5 text-xs font-medium text-gray-400">
-                            {report.findings.filter(f => f.severity === "info").length} Info(s)
-                          </span>
-                        )}
+                    </dl>
+
+                    {report.findings.length > 0 && (
+                      <div className="mt-5 flex flex-wrap gap-2">
+                        {SEVERITY_ORDER.map((sev) => {
+                          const n = report.findings.filter((f) => f.severity === sev).length;
+                          if (!n) return null;
+                          const cfg = SEVERITY_CONFIG[sev];
+                          return (
+                            <span
+                              key={sev}
+                              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${cfg.bg} ${cfg.border} ${cfg.color}`}
+                            >
+                              <span className="font-mono">{n}</span> {cfg.label}
+                            </span>
+                          );
+                        })}
                       </div>
-                    </div>
+                    )}
                   </Card>
 
                   <SenderCard report={report} />
 
                   {report.urls_found.length > 0 && (
-                    <Card className="p-5">
-                      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                        URLs Encontradas ({report.urls_found.length})
-                      </h3>
-                      <div className="max-h-48 space-y-1.5 overflow-y-auto">
+                    <Card className="p-5 sm:p-6">
+                      <CardTitle count={report.urls_found.length}>Links encontrados</CardTitle>
+                      <ol className="max-h-72 divide-y divide-[var(--border-default)] overflow-y-auto rounded-lg border border-[var(--border-default)]">
                         {report.urls_found.map((url, i) => (
-                          <div key={i} className="flex items-start gap-2 text-xs">
-                            <span className="mt-0.5 shrink-0 text-[var(--text-muted)]">{i + 1}.</span>
-                            <span className="break-all font-mono text-[var(--text-primary)]">{url}</span>
-                          </div>
+                          <li key={i} className="flex gap-3 px-3 py-2 font-mono text-xs">
+                            <span className="w-5 shrink-0 text-right text-[var(--text-muted)]">{i + 1}</span>
+                            <UrlText url={url} />
+                          </li>
                         ))}
-                      </div>
+                      </ol>
                     </Card>
                   )}
 
                   {report.domains_checked.length > 0 && (
-                    <Card className="p-5">
-                      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                        Domínios Verificados ({report.domains_checked.length})
-                      </h3>
+                    <Card className="p-5 sm:p-6">
+                      <CardTitle count={report.domains_checked.length}>Domínios verificados</CardTitle>
                       <div className="flex flex-wrap gap-2">
                         {report.domains_checked.map((d, i) => (
                           <span
                             key={i}
-                            className="rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] px-2.5 py-1 text-xs font-mono text-[var(--text-primary)]"
+                            className="max-w-full rounded-md border border-[var(--border-default)] bg-[var(--bg-elevated)] px-2 py-1 font-mono text-xs wrap-anywhere"
                           >
                             {d}
                           </span>
@@ -180,7 +170,7 @@ export function App() {
             </AnimatePresence>
           </div>
         </div>
-      </div>
+      </main>
 
       <TrustedModal open={trustedOpen} onClose={() => setTrustedOpen(false)} />
       <ToastContainer toasts={toasts} onDismiss={dismiss} />
@@ -190,16 +180,27 @@ export function App() {
 
 function EmptyState() {
   return (
-    <Card className="flex flex-col items-center gap-4 p-16 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--bg-elevated)]">
-        <AlertTriangle className="h-8 w-8 text-[var(--text-muted)]" />
-      </div>
+    <Card className="flex flex-col items-center gap-4 border-dashed bg-transparent p-10 text-center shadow-none sm:p-16">
+      <ScanSearch className="h-10 w-10 text-[var(--text-muted)]" strokeWidth={1.5} />
       <div>
-        <h2 className="text-lg font-semibold text-[var(--text-secondary)]">Aguardando análise</h2>
-        <p className="mt-1 max-w-sm text-sm text-[var(--text-muted)]">
-          Cole um e-mail, faça upload de um arquivo .eml/.msg, ou informe uma URL/domínio para iniciar.
+        <h2 className="font-display text-xl font-semibold">O resultado aparece aqui</h2>
+        <p className="mt-1 max-w-sm text-sm text-[var(--text-secondary)]">
+          Cole o e-mail com cabeçalhos, envie um arquivo .eml/.msg ou informe uma URL ou domínio.
         </p>
       </div>
     </Card>
+  );
+}
+
+// Destaca o host: é onde mora o domínio falso (paypa1.com, login.banco.com.evil.io).
+function UrlText({ url }: { url: string }) {
+  const m = url.match(/^([a-z][\w+.-]*:\/\/)?([^/?#\s]+)(.*)$/i);
+  if (!m) return <span className="min-w-0 wrap-anywhere">{url}</span>;
+  return (
+    <span className="min-w-0 wrap-anywhere text-[var(--text-muted)]">
+      {m[1]}
+      <span className="font-medium text-[var(--text-primary)]">{m[2]}</span>
+      {m[3]}
+    </span>
   );
 }

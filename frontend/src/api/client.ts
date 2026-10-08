@@ -34,11 +34,15 @@ export async function analyzeStream(
 
   try {
     const resp = await fetch("/api/v1/analyze/stream", { method: "POST", body: formData });
-    if (!resp.ok || !resp.body) throw new Error(`HTTP ${resp.status}`);
+    if (!resp.ok || !resp.body) {
+      const body = await resp.json().catch(() => ({}));
+      throw new Error(body.detail || `HTTP ${resp.status}`);
+    }
 
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
+    let gotResult = false;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -54,13 +58,16 @@ export async function analyzeStream(
         const json = dataLine[1].trim();
 
         if (chunk.startsWith("event: result")) {
+          gotResult = true;
           onResult(JSON.parse(json));
         } else {
           const step: ProgressStep = JSON.parse(json);
           onStep(step);
+          if (step.status === "error") throw new Error(step.message || "Falha na análise");
         }
       }
     }
+    if (!gotResult) throw new Error("Análise encerrada sem resultado");
   } catch (err) {
     onError(err instanceof Error ? err.message : "Erro desconhecido");
   }

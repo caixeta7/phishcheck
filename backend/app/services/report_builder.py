@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from app.schemas.response import FindingDTO, Severity, Verdict
+from app.schemas.response import AnalysisReportDTO, FindingDTO, Severity, Verdict
 
 
 class Finding:
@@ -17,11 +17,13 @@ class Finding:
         description: str,
         weight: int,
         severity: str = "info",
+        rule: str | None = None,
     ):
         self.category = category
         self.description = description
         self.weight = weight
         self.severity = severity
+        self.rule = rule or description
 
     def __repr__(self):
         return f"[{self.severity.upper()}] ({self.category}) {self.description} (+{self.weight})"
@@ -33,15 +35,6 @@ class Finding:
             weight=self.weight,
             severity=Severity(self.severity),
         )
-
-
-SEVERITY_ICON = {
-    "critical": "🔴",
-    "high": "🟠",
-    "medium": "🟡",
-    "low": "🔵",
-    "info": "⚪",
-}
 
 
 class AnalysisReport:
@@ -59,12 +52,18 @@ class AnalysisReport:
         self.domains_checked: list[str] = []
         self.urls_found: list[str] = []
 
-    def add(self, category: str, description: str, weight: int, severity: str = "info"):
-        self.findings.append(Finding(category, description, weight, severity))
+    def add(self, category: str, description: str, weight: int, severity: str = "info", rule: str | None = None):
+        """`rule` agrupa achados da mesma heurística disparada para vários itens
+        (N links, N domínios): todos aparecem no relatório, mas o score conta a
+        regra uma vez, pelo maior peso. Sem `rule`, cada achado conta sozinho."""
+        self.findings.append(Finding(category, description, weight, severity, rule))
 
     @property
     def score(self) -> int:
-        return min(100, sum(f.weight for f in self.findings))
+        best: dict[str, int] = {}
+        for f in self.findings:
+            best[f.rule] = max(best.get(f.rule, 0), f.weight)
+        return min(100, sum(best.values()))
 
     @property
     def verdict(self) -> Verdict:
@@ -89,24 +88,11 @@ class AnalysisReport:
         return labels[v]
 
     @property
-    def verdict_icon(self) -> str:
-        s = self.score
-        if s >= 60:
-            return "🔴"
-        elif s >= 30:
-            return "🟠"
-        elif s >= 10:
-            return "🟡"
-        return "🟢"
-
-    @property
     def findings_sorted(self) -> list[Finding]:
         order = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
         return sorted(self.findings, key=lambda f: order.get(f.severity, 5))
 
-    def to_dto(self):
-        from app.schemas.response import AnalysisReportDTO
-
+    def to_dto(self) -> AnalysisReportDTO:
         return AnalysisReportDTO(
             subject=self.subject_label,
             score=self.score,

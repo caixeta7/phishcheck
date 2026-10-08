@@ -1,7 +1,6 @@
 """Entrypoint da aplicação FastAPI — serve API + frontend unificados."""
 
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

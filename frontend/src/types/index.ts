@@ -36,19 +36,22 @@ export interface TrustedDomainList {
   domains: string[];
 }
 
-export const SEVERITY_CONFIG: Record<Severity, { label: string; color: string; bg: string; border: string; icon: string }> = {
-  critical: { label: "Crítico", color: "text-red-500", bg: "bg-red-500/10", border: "border-red-500/30", icon: "🔴" },
-  high:     { label: "Alto",     color: "text-orange-500", bg: "bg-orange-500/10", border: "border-orange-500/30", icon: "🟠" },
-  medium:   { label: "Médio",    color: "text-yellow-500", bg: "bg-yellow-500/10", border: "border-yellow-500/30", icon: "🟡" },
-  low:      { label: "Baixo",    color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/30", icon: "🔵" },
-  info:     { label: "Info",     color: "text-gray-400", bg: "bg-gray-500/10", border: "border-gray-500/30", icon: "⚪" },
+export const SEVERITY_CONFIG: Record<Severity, { label: string; color: string; bg: string; border: string; dot: string }> = {
+  critical: { label: "Crítico", color: "text-red-600 dark:text-red-400",       bg: "bg-red-500/10",    border: "border-red-500/30",    dot: "bg-red-500" },
+  high:     { label: "Alto",    color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-500/10", border: "border-orange-500/30", dot: "bg-orange-500" },
+  medium:   { label: "Médio",   color: "text-amber-700 dark:text-amber-400",   bg: "bg-amber-500/10",  border: "border-amber-500/30",  dot: "bg-amber-500" },
+  low:      { label: "Baixo",   color: "text-sky-700 dark:text-sky-400",       bg: "bg-sky-500/10",    border: "border-sky-500/30",    dot: "bg-sky-500" },
+  info:     { label: "Info",    color: "text-slate-500 dark:text-slate-400",   bg: "bg-slate-500/10",  border: "border-slate-500/30",  dot: "bg-slate-400" },
 };
 
-export const VERDICT_CONFIG: Record<Verdict, { label: string; color: string; ring: string }> = {
-  LEGITIMO:    { label: "Legítimo",    color: "text-emerald-500", ring: "#10b981" },
-  BAIXO_RISCO:  { label: "Baixo Risco", color: "text-yellow-500",  ring: "#eab308" },
-  SUSPEITO:     { label: "Suspeito",     color: "text-orange-500", ring: "#f97316" },
-  ALTO_RISCO:   { label: "Alto Risco",   color: "text-red-500",    ring: "#ef4444" },
+export const SEVERITY_ORDER: Severity[] = ["critical", "high", "medium", "low", "info"];
+
+// Faixas espelham report_builder.verdict (10 / 30 / 60).
+export const VERDICT_CONFIG: Record<Verdict, { label: string; color: string; ring: string; from: number; to: number }> = {
+  LEGITIMO:    { label: "Legítimo",    color: "text-emerald-600 dark:text-emerald-400", ring: "#10b981", from: 0,  to: 10 },
+  BAIXO_RISCO: { label: "Baixo risco", color: "text-amber-700 dark:text-amber-400",     ring: "#eab308", from: 10, to: 30 },
+  SUSPEITO:    { label: "Suspeito",    color: "text-orange-600 dark:text-orange-400",   ring: "#f97316", from: 30, to: 60 },
+  ALTO_RISCO:  { label: "Alto risco",  color: "text-red-600 dark:text-red-400",         ring: "#ef4444", from: 60, to: 100 },
 };
 
 export const ANALYSIS_STEPS = [

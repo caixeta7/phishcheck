@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
-from typing import Optional
 
 from app.core.config import get_settings
 
@@ -17,7 +15,7 @@ def _resolve_file() -> Path:
 
 
 def load_trusted_domains() -> set[str]:
-    global _trusted_domains, _loaded
+    global _loaded
     if _loaded:
         return _trusted_domains
 

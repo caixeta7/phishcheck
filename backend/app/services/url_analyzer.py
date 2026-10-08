@@ -8,6 +8,11 @@ from __future__ import annotations
 import re
 from urllib.parse import urlparse, parse_qs, unquote, urljoin
 
+import requests
+from bs4 import BeautifulSoup
+
+from app.core.config import get_settings
+from app.core.url_guard import validate_url, UnsafeUrlError, SafeRedirectSession
 from app.core.constants import (
     BRAND_OFFICIAL_ROOTS,
     COMMON_BRANDS,
@@ -23,20 +28,21 @@ from app.core.constants import (
 )
 from app.services.email_analyzer import (
     extract_domain,
-    extract_urls_from_text,
     is_ip_address,
     normalize_text,
-    strip_accents,
 )
 from app.services.report_builder import AnalysisReport
 from app.services.trusted_service import is_trusted
+
+
+_ENCODED_UNRESERVED = re.compile(r"%(2[dDeE]|3[0-9]|4[1-9a-fA-F]|5[0-9aAfF]|6[1-9a-fA-F]|7[0-9aAeE])")
 
 
 def unwrap_security_rewrite(url: str) -> tuple[str, str | None]:
     """Desempacota wrappers de segurança corporativos. Retorna (url_real, provider)."""
     try:
         parsed = urlparse(url)
-        host = parsed.netloc.lower().lstrip("www.")
+        host = parsed.netloc.lower().removeprefix("www.")
         if host not in URL_SECURITY_REWRITES:
             return url, None
         param = URL_SECURITY_REWRITES[host]
@@ -77,7 +83,7 @@ def analyze_url_heuristics(url: str, report: AnalysisReport):
         report.add(
             "URL",
             f"Link encapsulado por wrapper de segurança ({rewrite_provider}) — destino real: {real_url}.",
-            8, "info",
+            0, "info",
         )
         url = real_url
 
@@ -86,7 +92,7 @@ def analyze_url_heuristics(url: str, report: AnalysisReport):
     full_url = url
 
     if not host:
-        report.add("URL", f"Não foi possível interpretar a URL: {url}", 5, "low")
+        report.add("URL", f"Não foi possível interpretar a URL: {url}", 5, "low", rule="url.unparseable")
         return "", ""
 
     registrable = extract_domain(host)
@@ -94,27 +100,27 @@ def analyze_url_heuristics(url: str, report: AnalysisReport):
         return registrable, host
 
     if is_ip_address(host):
-        report.add("URL", f"Link usa endereço IP em vez de domínio ({host}).", 25, "high")
+        report.add("URL", f"Link usa endereço IP em vez de domínio ({host}).", 25, "high", rule="url.ip_host")
 
     if "@" in parsed.netloc:
-        report.add("URL", "URL contém '@' no host — técnica de disfarce.", 30, "critical")
+        report.add("URL", "URL contém '@' no host — técnica de disfarce.", 30, "critical", rule="url.at_host")
 
     if "@" in (parsed.path + "?" + parsed.query + "#" + parsed.fragment):
         report.add(
             "URL",
             "URL contém '@' no caminho/fragmento — tentativa de disfarçar destino real com domínio legítimo após o '@'.",
-            25, "high",
+            25, "high", rule="url.at_path",
         )
 
     if parsed.scheme == "http":
-        report.add("URL", "Link usa HTTP (sem criptografia).", 10, "low")
+        report.add("URL", "Link usa HTTP (sem criptografia).", 10, "low", rule="url.http")
 
     label_count = host.count(".")
     if label_count >= 4:
-        report.add("URL", f"Domínio com muitos subdomínios ({host}).", 15, "medium")
+        report.add("URL", f"Domínio com muitos subdomínios ({host}).", 15, "medium", rule="url.subdomains")
 
     if PUNYCODE_PREFIX in host:
-        report.add("URL", f"Domínio usa Punycode ({host}) — possível homógrafo.", 30, "critical")
+        report.add("URL", f"Domínio usa Punycode ({host}) — possível homógrafo.", 30, "critical", rule="url.punycode")
 
     is_shortener = registrable in URL_SHORTENERS or host in URL_SHORTENERS
     if is_shortener:
@@ -124,12 +130,12 @@ def analyze_url_heuristics(url: str, report: AnalysisReport):
         report.add(
             "URL",
             f"Encurtador de URL ({host}) oculta destino real{via}.",
-            weight, sev,
+            weight, sev, rule="url.shortener",
         )
 
     tld = registrable.split(".")[-1] if "." in registrable else ""
     if tld in SUSPICIOUS_TLDS:
-        report.add("URL", f"TLD associado a abuso (.{tld}).", 12, "medium")
+        report.add("URL", f"TLD associado a abuso (.{tld}).", 12, "medium", rule="url.suspicious_tld")
 
     norm_host = normalize_text(host)
     for brand in COMMON_BRANDS:
@@ -145,36 +151,33 @@ def analyze_url_heuristics(url: str, report: AnalysisReport):
                 report.add(
                     "URL",
                     f"Domínio menciona '{brand}' mas não é oficial — lookalike ({host}).",
-                    25, "high",
+                    25, "high", rule="url.lookalike",
                 )
                 break
 
-    decoded = unquote(full_url)
-    if decoded != full_url:
-        report.add("URL", "URL com caracteres codificados — possível ofuscação.", 8, "low")
+    # %20, %3A%2F%2F em querystring etc. são normais. Ofuscação é codificar o host
+    # ou caracteres "unreserved" (RFC 3986: letras, dígitos, - . _ ~) que nunca
+    # precisariam ser codificados.
+    if "%" in parsed.netloc or _ENCODED_UNRESERVED.search(parsed.path):
+        report.add("URL", "URL com caracteres codificados — possível ofuscação.", 8, "low", rule="url.encoded")
 
     suspicious_words = ["login", "verify", "secure", "update", "confirm", "account", "signin", "webscr", "validate"]
     path_query = (parsed.path + "?" + parsed.query).lower()
     hits = [w for w in suspicious_words if w in path_query]
     if len(hits) >= 2:
-        report.add("URL", f"Caminho com termos de phishing ({', '.join(hits)}).", 10, "low")
+        report.add("URL", f"Caminho com termos de phishing ({', '.join(hits)}).", 10, "low", rule="url.phishing_path")
 
     if host.count("-") >= 3:
-        report.add("URL", f"Domínio com muitos hífens ({host}).", 10, "medium")
+        report.add("URL", f"Domínio com muitos hífens ({host}).", 10, "medium", rule="url.hyphens")
 
     if len(full_url) > 120:
-        report.add("URL", "URL anormalmente longa.", 5, "low")
+        report.add("URL", "URL anormalmente longa.", 5, "low", rule="url.long")
 
     return registrable, host
 
 
 def _analyze_page_html(html: str, final_url: str, original_url: str, report: AnalysisReport):
     """Analisa o HTML da página de destino buscando sinais de phishing."""
-    try:
-        from bs4 import BeautifulSoup
-    except ImportError:
-        return
-
     soup = BeautifulSoup(html, "html.parser")
     final_domain = extract_domain(final_url)
     page_text = soup.get_text(" ", strip=True).lower()
@@ -236,14 +239,6 @@ MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 
 def analyze_url_content(url: str, report: AnalysisReport):
     """Pipeline de análise de conteúdo: valida URL, segue redirects e analisa HTML final."""
-    try:
-        import requests as _requests
-    except ImportError:
-        return
-
-    from app.core.config import get_settings
-    from app.core.url_guard import validate_url, UnsafeUrlError, SafeRedirectSession
-
     original_url = url
     try:
         validate_url(url)
@@ -285,11 +280,11 @@ def analyze_url_content(url: str, report: AnalysisReport):
 
         _analyze_page_html(html, final_url, original_url, report)
 
-    except _requests.exceptions.SSLError:
+    except requests.exceptions.SSLError:
         report.add("Conteúdo URL", f"Certificado SSL inválido em '{extract_domain(url)}'.", 20, "high")
-    except _requests.exceptions.ConnectionError:
+    except requests.exceptions.ConnectionError:
         report.add("Conteúdo URL", f"Não foi possível conectar a '{extract_domain(url)}'.", 0, "info")
-    except _requests.exceptions.Timeout:
+    except requests.exceptions.Timeout:
         report.add("Conteúdo URL", f"Timeout ao acessar '{extract_domain(url)}'.", 0, "info")
     except Exception as e:
         report.add("Conteúdo URL", f"Erro: {type(e).__name__}: {e}", 0, "info")
